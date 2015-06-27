@@ -24,6 +24,19 @@
 // methods virtual, which will be slightly slower, which is why it is optional.
 //#define DEBUG
 // #define TEST
+#define DECODE_NEC
+#define DECODE_SONY
+#define DECODE_SANYO
+#define DECODE_MITSUBISHI
+#define DECODE_RC5
+#define DECODE_RC6
+#define DECODE_PANASONIC
+#define DECODE_LG
+#define DECODE_JVC
+#define DECODE_SAMSUNG
+#define DECODE_WHYNTER
+#define DECODE_AIWA_RC_T501
+
 
 enum decode_type_t {
   NEC = 1,
@@ -83,8 +96,12 @@ public:
   void blink13(int blinkflag);
   int decode(decode_results *results);
   void enableIRIn();
+  void disableIRIn(); //##Minibloq.20111014
   void resume();
+  int getIRRemoteCode();
+  inline bool isEnabledIRIn() const { return enabled; };
 private:
+  bool enabled;
   // These are called by decode
   int getRClevel(decode_results *results, int *offset, int *used, int t1);
 #ifdef DECODE_NEC

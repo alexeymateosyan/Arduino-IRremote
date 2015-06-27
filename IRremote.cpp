@@ -330,10 +330,19 @@ void IRsend::enableIROut(int khz) {
   TIMER_CONFIG_KHZ(khz);
 }
 
-IRrecv::IRrecv(int recvpin)
+IRrecv::IRrecv(int recvpin) : enabled(false)
 {
   irparams.recvpin = recvpin;
   irparams.blinkflag = 0;
+}
+
+void IRrecv::disableIRIn() //##Minibloq.20111014.
+{
+	//Restores the timer 3:
+//	TCCR3A = _tccr3a;
+//	TCCR3B = _tccr3b;
+//	TIMSK3 = _timsk3;
+	enabled = false;
 }
 
 // initialization
@@ -358,6 +367,8 @@ void IRrecv::enableIRIn() {
 
   // set pin modes
   pinMode(irparams.recvpin, INPUT);
+
+  enabled = true;
 }
 
 // enable/disable blinking of pin 13 on IR processing
@@ -1446,3 +1457,63 @@ void IRsend::sendAiwaRCT501(int code) {
   space(0);
 }
 #endif
+
+int IRrecv::getIRRemoteCode()
+{
+	if (!isEnabledIRIn())
+		enableIRIn();
+
+	decode_results results;
+    int result = 0; //##Se determino que devolver 0 en vez de -1 cuando no recibe nada coherente, es mejor
+                    //para algunas actividades, como la musica con el control remoto (sobre todo cuando se
+                    //trabaja con chicos). Es por esto que abajo se devuelve 10 cuando se detecta un 0.
+    //##Implementar...
+    if (decode(&results))
+    {
+        int count = results.rawlen;
+	Serial.println(results.decode_type);
+	Serial.println(results.value, HEX);
+
+        if (results.decode_type == RC5)  //By now, only supports RC5 Format.
+        {
+//            char command[10];// = results.value;
+//            ultoa(results.value,command,16);
+		int prefix = (results.value & 0x00000ff0);
+		if (prefix == 0x0440 || prefix == 0x0c40 || prefix == 0x0000 || prefix == 0x0800) {
+                	result = results.value & 0x0000000f;
+			if (result == 0)
+				result = 10;
+		}
+		
+		
+//            if ((strcmp(command, "80c")  == 0) || (strcmp(command, "c") == 0))
+//              //Remote control's POWER button: By now do nothing.
+//                return 10;
+        }
+	else if (results.decode_type == SAMSUNG)
+	{
+		if (results.value == 0xe0e008f7 )
+			result = 8;
+		if (results.value == 0xe0e058a7 )
+			result = 5;
+		if (results.value == 0xe0e048b7 )
+			result = 2;
+	}
+	else
+	{
+		if (results.value == 0xBE15326E || results.value == 0xDB9D3097)
+			result = 4;
+		if (results.value == 0xE5139CA7 || results.value == 0xAC516266)
+			result = 2;
+		if (results.value == 0xAD5163FB || results.value == 0xE4139B12)
+			result = 8;
+		if (results.value == 0x009FA96F || results.value == 0x9912B99A)
+			result = 6;
+	}
+
+        resume(); // Receive the next value
+    }
+		
+	//disableIRIn();	
+    return result; //##Invalid code... See if in the future there will be a constant defined in Minibloq.
+}
